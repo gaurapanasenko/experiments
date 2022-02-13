@@ -43,11 +43,14 @@ def calc_trajectories():
     X, Y = np.meshgrid(x, y)
     X, Y = X.ravel(), Y.ravel()
     X, Y = polar2z(X, Y)
-    res = np.zeros((X.shape[0], 6, TIME_LEN))
+    sz = X.shape[0]
+    res = np.zeros((sz*3, 6, TIME_LEN))
     for i, (xx, yy) in enumerate(zip(X, Y)):
         XX = np.array([xx, yy + 1, 1])
-        XX /= np.linalg.norm(XX)*10
-        res[i] = calc_traj([-0, XX[0], -1, XX[1], -1, XX[2]])
+        XX /= np.linalg.norm(XX)
+        res[i] = calc_traj([-0, XX[0] / 10, -1, XX[1] / 10, -1, XX[2] / 10])
+        res[i+sz] = calc_traj([-0, XX[0] / 20, -1, XX[1] / 20, -1, XX[2] / 20])
+        res[i+2*sz] = calc_traj([-0, XX[0] / 30, -1, XX[1] / 30, -1, XX[2] / 30])
     return res
     
 def animate(i, res, lines):
