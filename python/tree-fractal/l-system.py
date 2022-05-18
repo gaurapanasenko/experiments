@@ -8,8 +8,7 @@ EXP_COEF = 0
 AXIOM = "F++F++F"
 NEW = {"F": "F-F++F-F"}
 THETA = 180 / 3
-ALPHA_START = 90
-POS_START = np.array([450, 50], dtype="float")
+DATA_START = np.array([450, 50, 90], dtype="float")
 LENGTH = 2
 ITERATIONS = 5
 
@@ -17,14 +16,12 @@ AXIOM = "FB"
 NEW = {"F": "F-------[F]+[F]+[F]++[F]+[F]+[F]+[F]"}
 # ~ NEWF = "-F+F+[+F-F]-[-F+F+F]"
 THETA = 360 / 8
-ALPHA_START = 90
-POS_START = np.array([300, 5], dtype="float")
+DATA_START = np.array([300, 5, 90], dtype="float")
 LENGTH = 700
 ITERATIONS = 5
 
 STATES = []
-POS = POS_START.copy()
-ALPHA = ALPHA_START
+DATA = DATA_START.copy()
 
 
 def easeOutElastic(x):
@@ -48,19 +45,23 @@ def easeOutBack(x):
     return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
 
 
-def calc_dest(start, angle):
+def calc_dest(data):
     length = LENGTH * SMALL_COEF**(len(STATES)+1)
-    a = angle * np.pi / 180
-    return a, (start + np.array((np.cos(a), np.sin(a))) * length)
+    a = data[2] * np.pi / 180
+    new_data = data.copy()
+    new_data[:2] += np.array((np.cos(a), np.sin(a))) * length
+    new_data[2] = a
+    return new_data
 
 
-def draw_line(img, start, angle):
+def draw_line(img, data):
     level = ITERATIONS - len(STATES) + 1
     level = 1
-    angle, end = calc_dest(start, angle)
-    cv2.line(img, start.astype("int"), end.astype("int"), 0, level, lineType=cv2.LINE_AA)
-    return end
-    
+    end_data = calc_dest(data)
+    cv2.line(img, data[:2].astype("int"), end_data[:2].astype("int"), 0, level, lineType=cv2.LINE_AA)
+    return end_data
+
+
 def exp_angle(x, coef):
     return (np.exp(x/180*coef)-1)/(np.exp(coef)-1)*180
 
@@ -72,28 +73,27 @@ def log_angle(x):
     return np.log(x+1)/np.log(180+1)*180 * s
     
 def F(img):
-    a = ALPHA % 360
+    a = DATA[2] % 360
     if a > 180:
         a -= 360
-    POS[:] = draw_line(img, POS, exp_angle_abs(a, EXP_COEF))
+    new_data = DATA.copy()
+    new_data[2] = exp_angle_abs(a, EXP_COEF)
+    DATA[:2] = draw_line(img, new_data)[:2]
     
 def b(img):
-    _, POS[:] = calc_dest(start, angle)
+    DATA[:2] = calc_dest(DATA)[:2]
     
 def ob(img):
-    STATES.append((ALPHA, POS.copy()))
+    STATES.append(DATA.copy())
     
 def cb(img):
-    global ALPHA, POS
-    ALPHA, POS = STATES.pop()
+    DATA[:] = STATES.pop()
 
 def pa(img):
-    global ALPHA
-    ALPHA += THETA
+    DATA[2] += THETA
 
 def ma(img):
-    global ALPHA
-    ALPHA -= THETA
+    DATA[2] -= THETA
     
 def none(img):
     pass
@@ -117,7 +117,7 @@ def main():
         img = np.zeros((600,600), dtype="uint8")
         img[:] = 255
 
-        ALPHA, POS[:] = ALPHA_START, POS_START
+        DATA[:] = DATA_START
         xx = (x/40)%4
         if xx < 1:
             EXP_COEF = easeOutExpo(xx%1)
