@@ -7,6 +7,9 @@ import pyqtgraph.opengl as gl
 SMALL_COEF = 0.4
 EXP_COEF = 0
 
+GREEN_COLOR = np.array([0.2,0.8,0.2,1])
+BROWN_COLOR = np.array([0.588,0.294,0,1])
+
 AXIOM = "F++F++F"
 NEW = {"F": "F-F++F-F"}
 THETA = 180 / 3
@@ -20,6 +23,38 @@ THETA = np.pi * 360 / 8 / 180
 DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
 LENGTH = 700
 ITERATIONS = 4
+
+
+AXIOM = "FB"
+NEW = {"B": "FFF[&+B][&&+B][&&&+B][&&&&+B][&&&&&+B][&&&&&&+B][&&&&&&&+B][&&&&&&&&+B]B"}
+THETA = np.pi * 360 / 8 / 180
+DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
+LENGTH = 60
+ITERATIONS = 5
+
+
+AXIOM = "FB"
+NEW = {
+    "B": "FF[&+FBE][&&+FBE][&&&+FBE][&&&&+FBE][&&&&&+FBE][&&&&&&+FBE][&&&&&&&+FBE][&&&&&&&&+FBE][FFBE]",
+    "EEEE": "[&+F][&&+F][&&&+F][&&&&+F][&&&&&+F][&&&&&&+F][&&&&&&&+F][&&&&&&&&+F]"
+}
+THETA = np.pi * 360 / 8 / 180
+DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
+LENGTH = 200
+ITERATIONS = 4
+SMALL_COEF = 0.4
+
+
+AXIOM = "FB"
+NEW = {
+    "B": "FB[&+FBE][&&+FBE][&&&+FBE][&&&&+FBE][&&&&&+FBE][&&&&&&+FBE][&&&&&&&+FBE][&&&&&&&&+FBE][FBE]",
+    "EEEE": "[&+F][&&+F][&&&+F][&&&&+F][&&&&&+F][&&&&&&+F][&&&&&&&+F][&&&&&&&&+F]"
+}
+THETA = np.pi * 360 / 8 / 180
+DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
+LENGTH = 200
+ITERATIONS = 4
+SMALL_COEF = 0.4
 
 STATES = []
 DATA = DATA_START.copy()
@@ -69,13 +104,13 @@ def calc_dest(data):
 
 
 def draw_line(data):
-    level = ITERATIONS - len(STATES) + 1
-    level = 1
+    level = ITERATIONS - len(STATES) - 1
+    # ~ level = 1
     end_data = calc_dest(data)
     global POINT_LAST
-    POINTS[POINT_LAST] = data[:3,3]
-    POINTS[POINT_LAST+1] = end_data[:3,3]
-    POINT_LAST += 2
+    POINTS[level,POINT_LAST[level]] = data[:3,3]
+    POINTS[level,POINT_LAST[level]+1] = end_data[:3,3]
+    POINT_LAST[level] += 2
     #cv2.line(img, data[:2].astype("int"), end_data[:2].astype("int"), 0, level, lineType=cv2.LINE_AA)
     return end_data
 
@@ -140,7 +175,7 @@ def main():
     for _ in range(ITERATIONS):
         for k, v in NEW.items():
             AXIOM = AXIOM.replace(k, v)
-    POINTS = np.zeros((AXIOM.count("F")*2, 3))
+    POINTS = np.zeros((ITERATIONS, AXIOM.count("F")*2, 3))
     x = 0
     app = pg.mkQApp("3D L-system")
     w = gl.GLViewWidget()
@@ -154,7 +189,7 @@ def main():
         x += 1
 
         DATA[:] = DATA_START
-        POINT_LAST = 0
+        POINT_LAST = np.zeros(ITERATIONS, dtype=int)
         xx = (x/40)%4
         if xx < 1:
             EXP_COEF = easeOutExpo(xx%1)
@@ -169,12 +204,20 @@ def main():
         print(xx, "%f" % EXP_COEF)
         draw_it()
         print(POINTS)
-        sp1 = gl.GLLinePlotItem(pos=POINTS, width=2, color=(0.2, 0.8, 0.2, 0.5))
-        sp1.translate(-250, 0, 0)
-        sp1.rotate(90, 1, 0, 0)
-        sp1.rotate(-90, 0, 1, 0)
-        sp1.rotate(90, 0, 0, 1)
-        w.addItem(sp1)
+        for i in range(ITERATIONS):
+            # ~ coef = i**(1/4)/(ITERATIONS-1)**(1/4)
+            # ~ print(coef)
+            # ~ color = (GREEN_COLOR*(1-coef)+(coef)*BROWN_COLOR).tolist()
+            if i == 0:
+                color = GREEN_COLOR.tolist()
+            else:
+                color = BROWN_COLOR.tolist()
+            sp1 = gl.GLLinePlotItem(pos=POINTS[i,:POINT_LAST[i]], width=i*2+1, color=color, mode="lines")
+            sp1.translate(-250, 0, 0)
+            sp1.rotate(90, 1, 0, 0)
+            sp1.rotate(-90, 0, 1, 0)
+            sp1.rotate(90, 0, 0, 1)
+            w.addItem(sp1)
         break
 
     QtGui.QApplication.instance().exec_()
