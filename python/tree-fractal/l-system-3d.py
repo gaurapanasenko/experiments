@@ -33,16 +33,16 @@ LENGTH = 60
 ITERATIONS = 5
 
 
-AXIOM = "FB"
-NEW = {
-    "B": "FF[&+FBE][&&+FBE][&&&+FBE][&&&&+FBE][&&&&&+FBE][&&&&&&+FBE][&&&&&&&+FBE][&&&&&&&&+FBE][FFBE]",
-    "EEEE": "[&+F][&&+F][&&&+F][&&&&+F][&&&&&+F][&&&&&&+F][&&&&&&&+F][&&&&&&&&+F]"
-}
-THETA = np.pi * 360 / 8 / 180
-DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
-LENGTH = 200
-ITERATIONS = 4
-SMALL_COEF = 0.4
+# ~ AXIOM = "FB"
+# ~ NEW = {
+    # ~ "B": "FF[&+FBE][&&+FBE][&&&+FBE][&&&&+FBE][&&&&&+FBE][&&&&&&+FBE][&&&&&&&+FBE][&&&&&&&&+FBE][FFBE]",
+    # ~ "EEEE": "[&+F][&&+F][&&&+F][&&&&+F][&&&&&+F][&&&&&&+F][&&&&&&&+F][&&&&&&&&+F]"
+# ~ }
+# ~ THETA = np.pi * 360 / 8 / 180
+# ~ DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
+# ~ LENGTH = 200
+# ~ ITERATIONS = 4
+# ~ SMALL_COEF = 0.4
 
 
 AXIOM = "FB"
@@ -55,6 +55,38 @@ DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], 
 LENGTH = 200
 ITERATIONS = 4
 SMALL_COEF = 0.4
+
+
+# ~ AXIOM = "FB"
+# ~ NEW = {
+    # ~ "B": "FB[++FFB][&++FFB][&&++FFB][&&&++FFB][&&&&++FFB][&&&&&++FFB][&&&&&&++FFB][&&&&&&&++FFB]FB",
+# ~ }
+# ~ THETA = np.pi * 360 / 8 / 180
+# ~ DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
+# ~ LENGTH = 10
+# ~ ITERATIONS = 5
+# ~ SMALL_COEF = 1.0
+
+
+AXIOM = "FB"
+NEW = {
+    "B": (
+        ("F[FB]", 0.2),
+        ("F[+FB]B", 0.1),
+        ("F[&+FB]B", 0.1),
+        ("F[&&+FB]B", 0.1),
+        ("F[&&&+FB]B", 0.1), 
+        ("F[&&&&+FB]B", 0.1), 
+        ("F[&&&&&+FB]B", 0.1), 
+        ("F[&&&&&&+FB]B", 0.1), 
+        ("F[&&&&&&&+FB]B", 0.1)
+    ),
+}
+THETA = np.pi * 360 / 8 / 180
+DATA_START = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype="float")
+LENGTH = 50
+ITERATIONS = 20
+SMALL_COEF = 0.6
 
 STATES = []
 DATA = DATA_START.copy()
@@ -174,6 +206,13 @@ def main():
     global AXIOM, ALPHA, POS, EXP_COEF, POINTS, POINT_LAST
     for _ in range(ITERATIONS):
         for k, v in NEW.items():
+            if type(v) == tuple:
+                i = 0
+                x = np.random.rand()
+                while x > v[i][1]:
+                    x -= v[i][1]
+                    i += 1
+                v = v[i][0]
             AXIOM = AXIOM.replace(k, v)
     POINTS = np.zeros((ITERATIONS, AXIOM.count("F")*2, 3))
     x = 0
@@ -203,7 +242,6 @@ def main():
             EXP_COEF = 0.01
         print(xx, "%f" % EXP_COEF)
         draw_it()
-        print(POINTS)
         for i in range(ITERATIONS):
             # ~ coef = i**(1/4)/(ITERATIONS-1)**(1/4)
             # ~ print(coef)
