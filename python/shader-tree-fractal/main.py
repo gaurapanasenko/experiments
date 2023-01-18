@@ -10,7 +10,7 @@ import moderngl_window as mglw
 from moderngl_window import geometry
 from moderngl_window.scene.camera import KeyboardCamera, OrbitCamera
 
-RESERVE=4*4*2*4*10240
+RESERVE=4*4*2*4*8192
 
 E=np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 
@@ -77,7 +77,6 @@ TRANSFORM = np.array([
 ], dtype="f4")
 
 print(TRANSFORM)
-os.exit(0)
 
 TRANS_NUM = len(TRANSFORM)
 
