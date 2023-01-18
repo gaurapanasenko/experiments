@@ -12,35 +12,72 @@ from moderngl_window.scene.camera import KeyboardCamera, OrbitCamera
 
 RESERVE=4*4*2*4*10240
 
+E=np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+
+def rotate_x(deg):
+    rad = np.radians(deg)
+    sinv, cosv = np.sin(rad), np.cos(rad)
+    return np.array([[1,0,0,0],[0,cosv,-sinv,0],[0,sinv,cosv,0],[0,0,0,1]])
+
+def rotate_y(deg):
+    rad = np.radians(deg)
+    sinv, cosv = np.sin(rad), np.cos(rad)
+    return np.array([[cosv,0,sinv,0],[0,1,0,0],[-sinv,0,cosv,0],[0,0,0,1]])
+
+def rotate_z(deg):
+    rad = np.radians(deg)
+    sinv, cosv = np.sin(rad), np.cos(rad)
+    return np.array([[cosv,-sinv,0,0],[sinv,cosv,0,0],[0,0,1,0],[0,0,0,1]])
+
+def scale(x,y,z):
+    return np.array([[x,0,0,0],[0,y,0,0],[0,0,z,0],[0,0,0,1]])
+
+def move(x,y,z):
+    return np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[x,y,z,1]])
+
+
+#BUFFER = np.array([
+#     0,0,0,1, 0,0.5,0,1, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+#], dtype="f")
+#TRANSFORM = np.array([
+#    [[ 0.70710677*0.7, -0.70710677*0.7,  0.        ,  0         ],
+#      [ 0.70710677*0.7,  0.70710677*0.7, -0.        ,  0.        ],
+#      [-0.        ,  0.        ,  1.*0.7        ,  0.        ],
+#      [ 0        ,  0.5        ,  0.        ,  1        ]],
+#    [[ 0.70710677*0.7, 0.70710677*0.7,  0.        ,  0         ],
+#      [ -0.70710677*0.7,  0.70710677*0.7, -0.        ,  0.        ],
+#      [-0.        ,  0.        ,  1.*0.7        ,  0.        ],
+#      [ 0        ,  0.5        ,  0.        ,  1        ]],
+
+#    [[ 1.*0.7        , -0.        ,  0.        ,  0.        ],
+#      [ 0.        ,  0.70710677*0.7,  0.70710677*0.7,  0.        ],
+#      [-0.        , -0.70710677*0.7,  0.70710677*0.7,  0.        ],
+#      [ 0.        ,  0.5        ,  0.        ,  1        ]],
+
+#    [[ 1.*0.7        , -0.        ,  0.        ,  0.        ],
+#      [ 0.        ,  0.70710677*0.7, -0.70710677*0.7,  0.        ],
+#      [-0.        ,  0.70710677*0.7,  0.70710677*0.7,  0.        ],
+#      [ 0.        ,  0.5        ,  0.        ,  1        ]],
+#], dtype="f4")
 
 BUFFER = np.array([
-     0,0,0,1, 0,0.5,0,1, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+     0,0.25,0,1, 0,0.5,0,1, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
 ], dtype="f")
 TRANSFORM = np.array([
-    [[ 0.70710677*0.7, -0.70710677*0.7,  0.        ,  0         ],
-      [ 0.70710677*0.7,  0.70710677*0.7, -0.        ,  0.        ],
-      [-0.        ,  0.        ,  1.*0.7        ,  0.        ],
-      [ 0        ,  0.5        ,  0.        ,  1        ]],
-    [[ 0.70710677*0.7, 0.70710677*0.7,  0.        ,  0         ],
-      [ -0.70710677*0.7,  0.70710677*0.7, -0.        ,  0.        ],
-      [-0.        ,  0.        ,  1.*0.7        ,  0.        ],
-      [ 0        ,  0.5        ,  0.        ,  1        ]],
+    #scale(0.5,0.5,0.5).dot(move(0, 0.5, 0)),
+    #scale(0.8,0.8,0.8).dot(rotate_x(45)).dot(move(0, 0.5, 0)),
+    #scale(0.7,0.7,0.7).dot(rotate_x(-30)).dot(move(0, 0.5, 0)),
+    #scale(0.8,0.8,0.8).dot(rotate_z(45)).dot(move(0, 0.5, 0)),
+    #scale(0.7,0.7,0.7).dot(rotate_z(-60)).dot(move(0, 0.5, 0)),
 
-    [[ 1.*0.7        , -0.        ,  0.        ,  0.        ],
-      [ 0.        ,  0.70710677*0.7,  0.70710677*0.7,  0.        ],
-      [-0.        , -0.70710677*0.7,  0.70710677*0.7,  0.        ],
-      [ 0.        ,  0.5        ,  0.        ,  1        ]],
-
-    [[ 1.*0.7        , -0.        ,  0.        ,  0.        ],
-      [ 0.        ,  0.70710677*0.7, -0.70710677*0.7,  0.        ],
-      [-0.        ,  0.70710677*0.7,  0.70710677*0.7,  0.        ],
-      [ 0.        ,  0.5        ,  0.        ,  1        ]],
-
-
-    # ~ [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]],
+    scale(0.8,0.8,0.8).dot(rotate_y(70)).dot(move(0, 0.25, 0)),
+    scale(0.8,0.8,0.8).dot(rotate_y(70)).dot(move(0, -0.25, 0)).dot(rotate_x(70)).dot(move(0, 0.5, 0)),
+    scale(0.8,0.8,0.8).dot(rotate_y(70)).dot(move(0, -0.25, 0)).dot(rotate_x(-70)).dot(move(0, 0.5, 0)),
+    #scale(0.8,0.8,0.8).dot(rotate_y(70)).dot(rotate_x(-70)).dot(move(0, 0.25, 0)),
 ], dtype="f4")
 
-
+print(TRANSFORM)
+os.exit(0)
 
 TRANS_NUM = len(TRANSFORM)
 
@@ -146,8 +183,8 @@ class App(CameraWindow):
         self.prog3['m_model'].write(Matrix44.from_translation((0, -0.5, 0), dtype='f4'))
         self.cube.render(self.prog3)
 
-        for i in range(7):
-            for j in range(7):
+        for i in range(1):
+            for j in range(1):
                 # ~ rotation = Matrix44.from_eulers((time, time, time), dtype='f4')
                 translation = Matrix44.from_translation((i, -0.5, -2 - j), dtype='f4')
                 modelview = translation
@@ -161,7 +198,7 @@ class App(CameraWindow):
                 self.prog['m_size'].value = sz
                 self.vao.render(mode=moderngl.LINES, vertices = 2, first=0)
 
-                for _ in range(5):
+                for _ in range(7):
                     offset += iters
                     iters *= TRANS_NUM
                     sz *= 0.5
