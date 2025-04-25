@@ -1,0 +1,14 @@
+export JAVA_HOME=/usr/lib64/jvm/java-17-openjdk
+export ANDROID_HOME=/path/to/android
+export QT_HOME=/path/to/qt
+export QT_VERSION=6.5.3
+export COPY_TO_GSTREAMER_ROOT=true
+export GSTREAMER_ROOT_ANDROID=/path/to/gstreamer
+
+export ANDROID_NDK_HOST=linux-x86_64
+export ANDROID_SDK_ROOT=${ANDROID_HOME}
+export ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk/26.1.10909125
+export ANDROID_NDK_PLATFORM=android-23
+export OPENSSL_ROOT_DIR=${ANDROID_HOME}/android_openssl
+export QTPREFIX=${QT_HOME}/${QT_VERSION}
+
