@@ -8,6 +8,8 @@
 #include <android/native_window_jni.h>
 #include <gst/gst.h>
 
+Q_DECLARE_OPAQUE_POINTER(ANativeWindow *)
+
 class GstPlayer : public QObject
 {
     Q_OBJECT
@@ -28,6 +30,10 @@ public:
     Q_DECLARE_JNI_NATIVE_METHOD_IN_CURRENT_SCOPE(playJni)
     static void pauseJni(JNIEnv *env, jobject thiz);
     Q_DECLARE_JNI_NATIVE_METHOD_IN_CURRENT_SCOPE(pauseJni)
+    static void surfaceInitJni(JNIEnv *env, jobject thiz, jobject surface);
+    Q_DECLARE_JNI_NATIVE_METHOD_IN_CURRENT_SCOPE(surfaceInitJni)
+    static void surfaceReleaseJni(JNIEnv *env, jobject thiz);
+    Q_DECLARE_JNI_NATIVE_METHOD_IN_CURRENT_SCOPE(surfaceReleaseJni)
 
     QString url() const;
     void setUrl(const QString &newUrl);
@@ -49,6 +55,9 @@ private:
     void release();
     static void on_bus_message(GstBus *bus, GstMessage *msg, gpointer user_data);
     void surfaceInit(ANativeWindow *window);
+    void surfaceRelease();
+    void linkSurface();
+    void resetPipeline();
 
 signals:
     void stateChanged();
@@ -56,9 +65,8 @@ signals:
     void restart();
     void playSig();
     void pauseSig();
-
-public slots:
-    void inited();
+    void surfaceInitSig(ANativeWindow *window);
+    void surfaceReleaseSig();
 
 private slots:
     void restartSlot();
@@ -66,7 +74,6 @@ private slots:
 private:
     QString m_url = "";
     States m_state = None;
-    bool ready = false;
     GstElement *m_pipeline = nullptr, *m_uriHolder = nullptr, *m_videoSink = nullptr;
     QJniObject m_javaPlayer{};
     ANativeWindow *m_window = nullptr;

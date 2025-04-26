@@ -45,6 +45,8 @@ if (ANDROID)
 
   find_package(GStreamerMobile COMPONENTS ${GSTREAMER_PLUGINS} fonts REQUIRED)
 
+  find_library(ANDROID_LIB android REQUIRED)
+
   set(target_libs GStreamer::mobile ${ANDROID_LIB} ${_gst_gstqml6})
 else()
   include(FindPkgConfig)

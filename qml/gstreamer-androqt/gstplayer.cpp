@@ -2,6 +2,7 @@
 #include <QQmlComponent>
 #include <QQmlProperty>
 #include "gstplayerfactory.h"
+#include <gst/video/video.h>
 
 GstPlayer::GstPlayer(QJniObject javaPlayer, QObject *parent)
     : QObject{parent}
@@ -10,16 +11,19 @@ GstPlayer::GstPlayer(QJniObject javaPlayer, QObject *parent)
     , m_state(None)
 {
     assert(m_javaPlayer.isValid());
+    qDebug() << this << ": Creating object";
     resetUrl();
     init();
     connect(this, &GstPlayer::restart, this, &GstPlayer::restartSlot);
     connect(this, &GstPlayer::playSig, this, &GstPlayer::play);
     connect(this, &GstPlayer::pauseSig, this, &GstPlayer::pause);
-    ready = true;
+    connect(this, &GstPlayer::surfaceInitSig, this, &GstPlayer::surfaceInit);
+    connect(this, &GstPlayer::surfaceReleaseSig, this, &GstPlayer::surfaceRelease);
 }
 
 GstPlayer::~GstPlayer()
 {
+    qDebug() << this << ": Destructing object";
     release();
 }
 
@@ -44,6 +48,8 @@ static void set_rank_factory(const gchar *name, guint rank)
 
 void GstPlayer::initGlobal()
 {
+    qDebug() << "GstPlayer::initGlobal";
+    qRegisterMetaType<ANativeWindow *>("ANativeWindow*");
     set_rank_factory("vaapidecodebin", 257);
     set_rank_factory("androidmedia", 257);
     set_rank_factory("amc", 257);
@@ -69,6 +75,17 @@ void GstPlayer::pauseJni(JNIEnv *env, jobject thiz)
     emit GstPlayerFactory::instance()->get(thiz)->pauseSig();
 }
 
+void GstPlayer::surfaceInitJni(JNIEnv *env, jobject thiz, jobject surface)
+{
+    ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
+    emit GstPlayerFactory::instance()->get(thiz)->surfaceInitSig(window);
+}
+
+void GstPlayer::surfaceReleaseJni(JNIEnv *env, jobject thiz)
+{
+    emit GstPlayerFactory::instance()->get(thiz)->surfaceReleaseSig();
+}
+
 QString GstPlayer::url() const
 {
     return m_url;
@@ -78,11 +95,11 @@ void GstPlayer::setUrl(const QString &newUrl)
 {
     if (m_url == newUrl)
         return;
+    qDebug() << this << ": Updating url to " << newUrl << " from " << m_url;
     m_url = newUrl;
     emit urlChanged();
     init();
-    if (m_pipeline && ready)
-        gst_element_set_state(m_pipeline, GST_STATE_READY);
+    resetPipeline();
     updateUri();
 }
 
@@ -104,7 +121,8 @@ GstPlayer::States GstPlayer::state() const
 void GstPlayer::play()
 {
     init();
-    if (m_pipeline && ready) {
+    qDebug() << this << ": Playing video";
+    if (m_pipeline && m_window) {
         gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
     }
 }
@@ -112,7 +130,8 @@ void GstPlayer::play()
 void GstPlayer::pause()
 {
     init();
-    if (m_pipeline && ready) {
+    qDebug() << this << ": Pausing video";
+    if (m_pipeline && m_window) {
         gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
     }
 }
@@ -120,7 +139,7 @@ void GstPlayer::pause()
 int GstPlayer::getPosition()
 {
     gint64 pos = -1;
-    if (m_pipeline && ready && gst_element_query_position(m_pipeline, GST_FORMAT_TIME, &pos))
+    if (m_pipeline && m_window && gst_element_query_position(m_pipeline, GST_FORMAT_TIME, &pos))
         return pos / 1000000;
     return -1;
 }
@@ -136,12 +155,12 @@ void GstPlayer::setState(States newState)
 void GstPlayer::updateUri()
 {
     init();
-    if (!m_uriHolder || !ready)
+    if (!m_uriHolder)
         return;
+    qDebug() << this << ": Updating URI " << m_url;
     QByteArray url = m_url.toLocal8Bit();
     const gchar *char_uri = url.data();
     g_object_set(m_uriHolder, "uri", char_uri, NULL);
-    qDebug() << "Set new URI" << url;
 }
 
 void GstPlayer::init()
@@ -151,62 +170,19 @@ void GstPlayer::init()
 
 void GstPlayer::initPipeline()
 {
-    if (m_pipeline || !ready)
+    if (m_pipeline)
         return;
 
-    bool error = false;
+    qDebug() << this << ": Initing pipeline";
 
-    // GstElement *glupload = gst_element_factory_make("glupload", NULL);
-    // if (!glupload) {
-    //     qWarning() << "Can't create glupload";
-    //     return;
-    // }
-    GstElement *sink = gst_element_factory_make("qml6glsink", NULL);
-    if (!sink) {
-        qWarning() << "Can't create qml6glsink";
-        // gst_object_unref(glupload);
-        return;
-    }
+    auto str = "videotestsrc ! warptv ! videoconvert ! autovideosink";
+    GstElement *pipeline = gst_parse_launch(str, nullptr);
+    GstElement *video_sink = gst_bin_get_by_interface(GST_BIN(pipeline), GST_TYPE_VIDEO_OVERLAY);
     // g_object_set(sink, "widget", m_videoItem, NULL);
 
-    // GstElement *bin = gst_bin_new(NULL);
-    // if (!bin) {
-    //     qWarning() << "Can't create bin";
-    //     gst_object_unref(glupload);
-    //     gst_object_unref(sink);
-    //     return;
-    // }
-    // gst_bin_add_many(GST_BIN(bin), glupload, sink, NULL);
-    // if (!gst_element_link(glupload, sink)) {
-    //     qWarning() << "Failed to link glupload and glimagesink";
-    //     gst_object_unref(bin);
-    //     return;
-    // }
-
-    // {
-    //     GstPad *pad = gst_element_get_static_pad(sink, "sink");
-    //     gst_element_add_pad(sink, gst_ghost_pad_new("sink", pad));
-    //     gst_object_unref(pad);
-    // }
-
-    GstElement *pipeline = gst_element_factory_make("playbin", NULL);
-    if (!pipeline) {
-        qWarning() << "Failed to create playbin";
-        gst_object_unref(sink);
-        return;
-    }
-    g_object_set(pipeline, "video-sink", sink, NULL);
-
-    // auto str = "playbin name=source video-sink=\"glupload ! qml6glsink name=videosink \"";
-    // GstElement *pipeline = gst_parse_launch(str, nullptr);
-    // GstElement *uridecodebin = gst_bin_get_by_name(GST_BIN(pipeline), "source");
-    // GstElement *midbin;
-    // g_object_get(uridecodebin, "video-sink", &midbin, NULL);
-    // GstElement *sink = gst_bin_get_by_name(GST_BIN(midbin), "videosink");
-    // g_object_set(sink, "widget", m_videoItem, NULL);
-
-    m_uriHolder = pipeline;
+    m_uriHolder = nullptr;
     m_pipeline = pipeline;
+    m_videoSink = video_sink;
 
     GstBus *bus = gst_element_get_bus(m_pipeline);
     gst_bus_add_signal_watch(bus);
@@ -215,21 +191,25 @@ void GstPlayer::initPipeline()
 
     updateUri();
 
-    gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
+    linkSurface();
+
+    gst_element_set_state(m_pipeline, GST_STATE_READY);
 }
 
 void GstPlayer::release()
 {
-    if (m_pipeline != nullptr) {
-        gst_element_set_state(m_pipeline, GST_STATE_NULL);
-        GstBus *bus = gst_element_get_bus(m_pipeline);
-        g_signal_handler_disconnect(bus, busConnection);
-        gst_object_unref(bus);
-        gst_object_unref(m_pipeline);
-        m_pipeline = nullptr;
-        m_uriHolder = nullptr;
-        m_state = None;
-    }
+    if (m_pipeline == nullptr)
+        return;
+    qDebug() << this << ": Releasing pipeline";
+    gst_element_set_state(m_pipeline, GST_STATE_NULL);
+    GstBus *bus = gst_element_get_bus(m_pipeline);
+    g_signal_handler_disconnect(bus, busConnection);
+    gst_object_unref(bus);
+    gst_object_unref(m_pipeline);
+    m_pipeline = nullptr;
+    m_uriHolder = nullptr;
+    m_videoSink = nullptr;
+    m_state = None;
 }
 
 void GstPlayer::on_bus_message(GstBus *bus, GstMessage *msg, gpointer user_data)
@@ -241,7 +221,7 @@ void GstPlayer::on_bus_message(GstBus *bus, GstMessage *msg, gpointer user_data)
 
     switch (GST_MESSAGE_TYPE(msg)) {
     case GST_MESSAGE_EOS:
-        g_print("End of stream\n");
+        qDebug() << player << ": End of stream";
         emit player->restart();
         // gst_element_set_state(pipeline, GST_STATE_READY);
         break;
@@ -249,7 +229,7 @@ void GstPlayer::on_bus_message(GstBus *bus, GstMessage *msg, gpointer user_data)
         GError *err;
         gchar *debug;
         gst_message_parse_error(msg, &err, &debug);
-        g_printerr("Error: %s\n", err->message);
+        qDebug() << player << ": Error: " << err->message;
         g_error_free(err);
         g_free(debug);
         gst_element_set_state(pipeline, GST_STATE_NULL);
@@ -260,10 +240,11 @@ void GstPlayer::on_bus_message(GstBus *bus, GstMessage *msg, gpointer user_data)
         if (GST_MESSAGE_SRC(msg) == GST_OBJECT(pipeline)) {
             GstState old_state, new_state, pending_state;
             gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
-            g_print("Pipeline state changed from %s to %s while %s:\n",
-                    gst_element_state_get_name(old_state),
-                    gst_element_state_get_name(new_state),
-                    gst_element_state_get_name(pending_state));
+            auto old_name = gst_element_state_get_name(old_state),
+                 new_name = gst_element_state_get_name(new_state),
+                 pending_name = gst_element_state_get_name(pending_state);
+            qDebug() << "Pipeline state changed to " << new_name << " from " << old_name
+                     << " while " << pending_name;
             switch (new_state) {
             case GST_STATE_NULL:
                 player->setState(None);
@@ -293,36 +274,55 @@ void GstPlayer::on_bus_message(GstBus *bus, GstMessage *msg, gpointer user_data)
 
 void GstPlayer::surfaceInit(ANativeWindow *window)
 {
-    if (m_window != nullptr) {
-        ANativeWindow_release(m_window);
-        if (m_window == window) {
-            if (video_sink) {
-                gst_video_overlay_expose(GST_VIDEO_OVERLAY(video_sink));
-                gst_video_overlay_expose(GST_VIDEO_OVERLAY(video_sink));
+    qDebug() << this << ": Initing surface to " << window << " from " << m_window;
+    if (m_window == window) {
+        if (m_window != nullptr) {
+            // Release new pointer
+            ANativeWindow_release(window);
+            // Update video sink
+            if (m_videoSink != nullptr) {
+                gst_video_overlay_expose(GST_VIDEO_OVERLAY(m_videoSink));
+                gst_video_overlay_expose(GST_VIDEO_OVERLAY(m_videoSink));
             }
-            return;
         }
+        return;
     }
     m_window = window;
-    ready = true;
-    //TODO: check init completed
+    linkSurface();
     //TODO: ready
-    //TODO: surface release
     //TODO: surface init jni connect
 }
 
-void GstPlayer::inited()
+void GstPlayer::surfaceRelease()
 {
-    qInfo() << "Inited GstreamerPlayer!";
-    ready = true;
-    initPipeline();
-    updateUri();
+    qDebug() << this << ": Releasing surface " << m_window << " in ";
+    auto tmp = m_window;
+    m_window = nullptr;
+    linkSurface();
+    ANativeWindow_release(tmp);
+}
+
+void GstPlayer::linkSurface()
+{
+    if (m_videoSink != nullptr) {
+        qDebug() << this << ": Linking surface " << m_window << " to " << m_videoSink << " in ";
+        gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(m_videoSink), (guintptr) m_window);
+        if (m_window == nullptr) {
+            resetPipeline();
+        }
+    }
+}
+
+void GstPlayer::resetPipeline()
+{
+    qDebug() << this << ": Reseting pipeline";
+    if (m_pipeline)
+        gst_element_set_state(m_pipeline, GST_STATE_READY);
 }
 
 void GstPlayer::restartSlot()
 {
     release();
-    init();
     init();
 }
 
@@ -334,6 +334,8 @@ Q_DECL_EXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
         Q_JNI_NATIVE_SCOPED_METHOD(releaseJni, GstPlayer),
         Q_JNI_NATIVE_SCOPED_METHOD(playJni, GstPlayer),
         Q_JNI_NATIVE_SCOPED_METHOD(pauseJni, GstPlayer),
+        Q_JNI_NATIVE_SCOPED_METHOD(surfaceInitJni, GstPlayer),
+        Q_JNI_NATIVE_SCOPED_METHOD(surfaceReleaseJni, GstPlayer),
     };
     env.registerNativeMethods("top/elfiny/GstPlayer", methods);
 }
