@@ -31,6 +31,11 @@ GstPlayerFactory *GstPlayerFactory::instance(QObject *parent)
     return m_instance;
 }
 
+GstPlayerFactory *GstPlayerFactory::create(QQmlEngine *qmlEngine, QJSEngine *)
+{
+    return instance(qmlEngine);
+}
+
 GstPlayer *GstPlayerFactory::get(jobject javaPlayer)
 {
     if (!m_players.contains(javaPlayer)) {
@@ -39,9 +44,15 @@ GstPlayer *GstPlayerFactory::get(jobject javaPlayer)
         player->moveToThread(thread);
         connect(player, &QObject::destroyed, this, &GstPlayerFactory::release);
         m_players[javaPlayer] = player;
+        emit playersChanged();
         return player;
     }
     return m_players[javaPlayer];
+}
+
+QList<GstPlayer *> GstPlayerFactory::players()
+{
+    return m_players.values();
 }
 
 void GstPlayerFactory::release(QObject *player)

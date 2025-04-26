@@ -11,13 +11,20 @@ class GstPlayerFactory : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_SINGLETON
+    Q_PROPERTY(QList<GstPlayer *> players READ players NOTIFY playersChanged FINAL)
 private:
     explicit GstPlayerFactory(QObject *parent = nullptr);
     ~GstPlayerFactory();
 
 public:
     static GstPlayerFactory *instance(QObject *parent = nullptr);
+    static GstPlayerFactory *create(QQmlEngine *qmlEngine, QJSEngine *);
     GstPlayer *get(jobject javaPlayer);
+    QList<GstPlayer *> players();
+
+signals:
+    void playersChanged();
 
 private:
     void release(QObject *player);

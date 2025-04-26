@@ -32,52 +32,11 @@ Window {
         running: true
         repeat: true
         onTriggered: {
+            let players = Array.from(GstPlayerFactory.players)
             let cur = new Date().valueOf()
             let targPos = cur - root.timestamp
-            let pos1 = player1.getPosition()
-            let pos2 = player1.getPosition()
-            let diff1 = targPos - pos1
-            let diff2 = targPos - pos2
-            text1.text = diff1 + "ms ," + diff2 + "ms"
-        }
-    }
-
-    Row {
-        anchors.fill: parent
-        GstreamerPlayer {
-            id: player1
-            url: root.url
-            height: parent.height
-            width: parent.width / 2
-            // visible: playerState === GstreamerPlayer.Playing
-            transform: Matrix4x4 {
-                matrix: Qt.matrix4x4( -1, 0, 0, player1.width, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-            }
-            Connections {
-                target: player1
-                function onPlayerStateChanged() {
-                    if (player1.playerState === GstreamerPlayer.Paused) {
-                        readyCounter.count++
-                        destroy();
-                    }
-                }
-            }
-        }
-        GstreamerPlayer {
-            id: player2
-            url: root.url
-            height: parent.height
-            width: parent.width / 2
-            // visible: playerState === GstreamerPlayer.Playing
-            Connections {
-                target: player2
-                function onPlayerStateChanged() {
-                    if (player2.playerState === GstreamerPlayer.Paused) {
-                        readyCounter.count++
-                        destroy();
-                    }
-                }
-            }
+            let pos = players.map((i) => (targPos - i.getPosition()) + "ms")
+            text1.text = pos.join(", ")
         }
     }
 
@@ -93,8 +52,8 @@ Window {
         interval: 15000
         repeat: true
         onTriggered: {
-            player1.play()
-            player2.play()
+            let players = Array.from(GstPlayerFactory.players)
+            players.map((i) => {i.play()});
             root.timestamp = new Date().valueOf()
         }
     }

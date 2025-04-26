@@ -338,4 +338,5 @@ Q_DECL_EXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
         Q_JNI_NATIVE_SCOPED_METHOD(surfaceReleaseJni, GstPlayer),
     };
     env.registerNativeMethods("top/elfiny/GstPlayer", methods);
+    return JNI_VERSION_1_4;
 }
