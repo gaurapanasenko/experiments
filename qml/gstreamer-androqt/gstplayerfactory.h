@@ -30,7 +30,7 @@ private:
     void release(QObject *player);
 
     static GstPlayerFactory *m_instance;
-    QHash<jobject, GstPlayer *> m_players = {};
+    QHash<int, GstPlayer *> m_players = {};
     QThread *thread = nullptr;
 };
 

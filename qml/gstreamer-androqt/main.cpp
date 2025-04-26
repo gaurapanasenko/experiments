@@ -12,9 +12,12 @@
 int main_qt(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-
-    GstPlayer::initGlobal();
     GstPlayerFactory::instance(&app);
+    GstPlayer::initGlobal();
+
+    QJniEnvironment env;
+    QJniObject activity = QJniObject(QNativeInterface::QAndroidApplication::context());
+    activity.callMethod<void>("initPlayers");
 
     QQmlApplicationEngine engine;
     QObject::connect(
@@ -23,7 +26,7 @@ int main_qt(int argc, char *argv[])
         &app,
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
-    engine.loadFromModule("gstreamer-androqt", "Main");
+    engine.loadFromModule("gstreamer", "Main");
     return app.exec();
 }
 

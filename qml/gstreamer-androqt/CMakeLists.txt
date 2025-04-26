@@ -40,6 +40,7 @@ if (ANDROID)
       # ${GSTREAMER_PLUGINS_CODECS}
       # ${GSTREAMER_PLUGINS_NET}
       ${GSTREAMER_PLUGINS_SYS}
+      autodetect videoconvertscale videotestsrc
       playback androidmedia soup isomp4 fmp4 mp4 mpg123 videoparsersbad vpx matroska openh264)
   set(GStreamer_EXTRA_DEPS gstreamer-video-1.0)
 
@@ -74,7 +75,17 @@ endif()
 
 qt_standard_project_setup(REQUIRES 6.5)
 
-qt_add_executable(appgstreamer-androqt main.cpp)
+
+set(android_files
+  android/AndroidManifest.xml
+  android/build.gradle
+  android/java/org/freedesktop/gstreamer/GStreamer.java
+  android/java/top/elfiny/GstActivity.java
+  android/java/top/elfiny/GstPlayer.java
+  android/java/top/elfiny/GstSurfaceView.java
+)
+
+qt_add_executable(appgstreamer-androqt main.cpp ${android_files})
 
 qt_add_qml_module(appgstreamer-androqt
     URI gstreamer

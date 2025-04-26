@@ -38,16 +38,18 @@ GstPlayerFactory *GstPlayerFactory::create(QQmlEngine *qmlEngine, QJSEngine *)
 
 GstPlayer *GstPlayerFactory::get(jobject javaPlayer)
 {
-    if (!m_players.contains(javaPlayer)) {
-        qDebug() << "Creating new player: " << javaPlayer;
-        GstPlayer *player = new GstPlayer(javaPlayer);
+    QJniObject jPlayer(javaPlayer);
+    int hash = jPlayer.callMethod<int>("hashCode");
+    if (!m_players.contains(hash)) {
+        qDebug() << "Creating new player:" << hash << ". New size:" << m_players.size() + 1;
+        GstPlayer *player = new GstPlayer(jPlayer);
         player->moveToThread(thread);
         connect(player, &QObject::destroyed, this, &GstPlayerFactory::release);
-        m_players[javaPlayer] = player;
+        m_players[hash] = player;
         emit playersChanged();
         return player;
     }
-    return m_players[javaPlayer];
+    return m_players[hash];
 }
 
 QList<GstPlayer *> GstPlayerFactory::players()
@@ -57,7 +59,7 @@ QList<GstPlayer *> GstPlayerFactory::players()
 
 void GstPlayerFactory::release(QObject *player)
 {
-    jobject javaPlayer = qobject_cast<GstPlayer *>(player)->object();
+    int javaPlayer = qobject_cast<GstPlayer *>(player)->jniHash();
     if (!m_players.contains(javaPlayer)) {
         m_players.remove(javaPlayer);
     }

@@ -14,8 +14,11 @@ class GstPlayer : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
+    QML_UNCREATABLE("This class constructed by GstPlayerFactory")
     Q_PROPERTY(QString url READ url WRITE setUrl RESET resetUrl NOTIFY urlChanged FINAL)
-    Q_PROPERTY(States playerState READ state WRITE setState NOTIFY stateChanged FINAL)
+    Q_PROPERTY(States playerState READ state NOTIFY stateChanged FINAL)
+    Q_PROPERTY(
+        bool playing READ playing WRITE setPlaying RESET resetPlaying NOTIFY playingChanged FINAL)
 public:
     enum States { None, Ready, Paused, Playing };
     Q_ENUM(States)
@@ -41,11 +44,15 @@ public:
 
     States state() const;
 
-    jobject object();
+    int jniHash();
 
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
     Q_INVOKABLE int getPosition();
+
+    bool playing() const;
+    void setPlaying(bool newPlaying);
+    void resetPlaying();
 
 private:
     void setState(States newState);
@@ -58,6 +65,10 @@ private:
     void surfaceRelease();
     void linkSurface();
     void resetPipeline();
+    void processPlaying();
+    void playPriv();
+    void pausePriv();
+    void updateSizes();
 
 signals:
     void stateChanged();
@@ -67,6 +78,9 @@ signals:
     void pauseSig();
     void surfaceInitSig(ANativeWindow *window);
     void surfaceReleaseSig();
+    void linked();
+
+    void playingChanged();
 
 private slots:
     void restartSlot();
@@ -74,10 +88,12 @@ private slots:
 private:
     QString m_url = "";
     States m_state = None;
-    GstElement *m_pipeline = nullptr, *m_uriHolder = nullptr, *m_videoSink = nullptr;
+    GstElement *m_pipeline = nullptr, *m_uriHolder = nullptr, *m_videoSink = nullptr,
+               *m_videoOverlay = nullptr;
     QJniObject m_javaPlayer{};
     ANativeWindow *m_window = nullptr;
     quint64 busConnection = 0;
+    bool m_playing = false;
 };
 
 #endif // GSTPLAYER_H
